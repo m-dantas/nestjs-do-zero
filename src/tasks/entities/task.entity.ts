@@ -3,4 +3,5 @@ export class TaskEntity {
   name: string;
   description: string;
   completed: boolean;
+  createdAt?: Date
 }

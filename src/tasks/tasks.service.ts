@@ -1,82 +1,123 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { TaskEntity } from './entities/task.entity';
+import { HttpException, HttpStatus, Injectable, Query } from '@nestjs/common';
 import { UpdateTaskDTO } from './dto/update-task.dto';
 import { CreateTaskDTO } from './dto/create-task.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { PaginationDTO } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class TasksService {
+  constructor(private prisma: PrismaService) { }
 
-  private tasks: TaskEntity[] = [
-    { id: 1, name: 'Academia', description: 'Tomar vergonha na cara e ir', completed: false }
-  ]
+  async findAll(pagination?: PaginationDTO) {
+    try {
+      const limit = pagination?.limit ?? 10
+      const offset = pagination?.offset ?? 0
 
-  findAll() {
-    return {
-      task: this.tasks,
-      message: 'Tasks was finded'
+      const tasks = await this.prisma.tasks.findMany({
+        take: limit,
+        skip: offset,
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+
+      return {
+        tasks,
+        message: 'Tasks was finded'
+      }
+    } catch (error) {
+      console.log(error)
+      throw new HttpException("Failed to find a task", HttpStatus.BAD_REQUEST)
     }
   }
 
-  findOne(id: number) {
-    const task = this.tasks.find(item => item.id === id)
+  async findOne(id: number) {
+    try {
+      const task = await this.prisma.tasks.findFirst({
+        where: { id }
+      })
 
-    if (!task) {
-      throw new HttpException("Task not found", HttpStatus.NOT_FOUND)
-    }
+      if (!task) {
+        throw new HttpException("Task not found", HttpStatus.NOT_FOUND)
+      }
 
-    return {
-      task,
-      message: 'Task was finded'
-    }
-  }
-
-  create(body: CreateTaskDTO) {
-    const id = this.tasks.length + 1
-    const task = {
-      id,
-      ...body,
-      completed: false
-    }
-
-    this.tasks.push(task)
-
-    return {
-      task,
-      message: 'Task was created'
+      return {
+        task,
+        message: 'Task was finded'
+      }
+    } catch (error) {
+      console.log(error)
+      throw new HttpException("Failed to find a task", HttpStatus.BAD_REQUEST)
     }
   }
 
-  update(id: number, body: UpdateTaskDTO) {
-    const taskIndex = this.tasks.findIndex(item => item.id === id)
+  async create(body: CreateTaskDTO) {
+    try {
+      const task = await this.prisma.tasks.create({
+        data: {
+          ...body,
+          completed: false
+        }
+      })
 
-    if (taskIndex < 0) {
-      throw new HttpException("Task not found", HttpStatus.NOT_FOUND)
-    }
 
-    const task = this.tasks[taskIndex]
-
-    this.tasks[taskIndex] = {
-      ...task,
-      ...body
-    }
-
-    return {
-      task: this.tasks[taskIndex],
-      message: 'Task was updated'
+      return {
+        task,
+        message: 'Task was created'
+      }
+    } catch (error) {
+      console.log(error)
+      throw new HttpException("Failed to create a task", HttpStatus.BAD_REQUEST)
     }
   }
 
-  delete(id: number) {
-    const taskIndex = this.tasks.findIndex(item => item.id === id)
+  async update(id: number, body: UpdateTaskDTO) {
+    try {
+      const findTask = await this.prisma.tasks.findFirst({
+        where: { id }
+      })
 
-    if (taskIndex < 0) {
-      throw new HttpException("Task not found", HttpStatus.NOT_FOUND)
+      if (!findTask) {
+        throw new HttpException("Task not found", HttpStatus.NOT_FOUND)
+      }
+
+      const task = await this.prisma.tasks.update({
+        where: { id },
+        data: body
+      })
+
+      return {
+        task,
+        message: 'Task was updated'
+      }
+    } catch (error) {
+      console.log(error)
+      throw new HttpException("Failed to update a task", HttpStatus.BAD_REQUEST)
     }
+  }
 
-    this.tasks.splice(taskIndex, 1)
+  async delete(id: number) {
+    try {
+      const findTask = await this.prisma.tasks.findFirst({
+        where: { id }
+      })
 
-    return {
-      message: 'Task was deleted'
+      if (!findTask) {
+        throw new HttpException("Task not found", HttpStatus.NOT_FOUND)
+      }
+
+      await this.prisma.tasks.delete({
+        where: {
+          id: findTask.id
+        }
+      })
+
+      return {
+        message: 'Task was deleted'
+      }
+    } catch (error) {
+      console.log(error)
+      throw new HttpException("Failed to deleted a task", HttpStatus.BAD_REQUEST)
     }
   }
 }
