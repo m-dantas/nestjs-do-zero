@@ -20,4 +20,17 @@ model Tasks {
   description String
   completed   Boolean
   createdAt   DateTime @default(now())
+  userId Int  @default(0)
+  user Users? @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+model Users {
+  id  Int @id @default(autoincrement())
+  name String
+  passwordHash String
+  email String @unique
+  createdAt   DateTime @default(now())
+
+  Tasks Tasks[]
 }
